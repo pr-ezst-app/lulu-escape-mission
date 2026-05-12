@@ -17,6 +17,28 @@ interface Typewriter {
   collected: boolean;
 }
 
+interface Bomb {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  reflected: boolean;
+  onGround: boolean;
+}
+
+interface Freesia {
+  x: number;
+  hp: number;
+  maxHp: number;
+  state: "entering" | "fighting" | "hurt" | "fleeing" | "gone";
+  frame: number;
+  bobOffset: number;
+  bombTimer: number;
+  hurtTimer: number;
+  bombs: Bomb[];
+  nextBossLevel: number;
+}
+
 interface Platform {
   x: number;
   y: number;
@@ -358,6 +380,154 @@ function drawTypewriter(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillText("?", px + 22, py - 4);
 }
 
+function drawFreesia(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  bob: number,
+  hurtTimer: number,
+  hp: number,
+  maxHp: number,
+  tick: number
+) {
+  const px = Math.floor(x);
+  const py = Math.floor(GROUND_Y - 80 + bob);
+  const flash = hurtTimer > 0 && Math.floor(hurtTimer / 4) % 2 === 0;
+  const bodyColor = flash ? "#ffffff" : "#8b0000";
+  const scaleColor = flash ? "#ffaaaa" : "#cc0000";
+  const bellyColor = flash ? "#ffeeee" : "#ff6666";
+
+  // === SNAKE TAIL (coils on ground) ===
+  ctx.fillStyle = flash ? "#ffffff" : "#6b0000";
+  // Coil 1
+  ctx.fillRect(px + 20, py + 80, 50, 18);
+  ctx.fillRect(px + 15, py + 86, 60, 14);
+  // Coil 2
+  ctx.fillRect(px + 10, py + 100, 70, 18);
+  ctx.fillRect(px + 5, py + 106, 80, 12);
+  // Coil belly stripes
+  ctx.fillStyle = bellyColor;
+  for (let i = 0; i < 6; i++) {
+    ctx.fillRect(px + 18 + i * 10, py + 82, 6, 12);
+    ctx.fillRect(px + 14 + i * 10, py + 102, 6, 12);
+  }
+
+  // === BODY (rising up) ===
+  drawPixelRect(ctx, px + 28, py + 30, 24, 55, bodyColor);
+  drawPixelRect(ctx, px + 30, py + 30, 20, 55, scaleColor);
+  // Belly
+  drawPixelRect(ctx, px + 32, py + 35, 14, 46, bellyColor);
+  // Scale pattern
+  ctx.fillStyle = flash ? "#ffcccc" : "#aa0000";
+  for (let i = 0; i < 5; i++) {
+    ctx.fillRect(px + 29, py + 32 + i * 10, 22, 4);
+  }
+
+  // === HEAD ===
+  drawPixelRect(ctx, px + 22, py, 36, 34, bodyColor);
+  drawPixelRect(ctx, px + 24, py + 2, 32, 30, scaleColor);
+  // Snout
+  drawPixelRect(ctx, px + 18, py + 16, 46, 16, bodyColor);
+  drawPixelRect(ctx, px + 20, py + 18, 42, 12, bellyColor);
+  // Forked tongue
+  ctx.fillStyle = "#ff0066";
+  ctx.fillRect(px + 14, py + 22, 8, 4);
+  ctx.fillRect(px + 10, py + 20, 6, 4);
+  ctx.fillRect(px + 10, py + 26, 6, 4);
+
+  // Evil glowing eyes
+  ctx.fillStyle = flash ? "#ffffff" : "#ffff00";
+  ctx.fillRect(px + 27, py + 6, 8, 8);
+  ctx.fillRect(px + 45, py + 6, 8, 8);
+  ctx.fillStyle = "#ff0000";
+  ctx.fillRect(px + 29, py + 8, 4, 4);
+  ctx.fillRect(px + 47, py + 8, 4, 4);
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(px + 30, py + 9, 2, 2);
+  ctx.fillRect(px + 48, py + 9, 2, 2);
+
+  // Evil eyebrows (slanted)
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(px + 26, py + 3, 4, 3);
+  ctx.fillRect(px + 30, py + 2, 4, 3);
+  ctx.fillRect(px + 44, py + 2, 4, 3);
+  ctx.fillRect(px + 48, py + 3, 4, 3);
+
+  // Crown of thorns / evil spikes on head
+  ctx.fillStyle = "#ff4400";
+  for (let i = 0; i < 5; i++) {
+    ctx.fillRect(px + 24 + i * 7, py - 10, 4, 12);
+  }
+  ctx.fillStyle = "#ff6600";
+  for (let i = 0; i < 5; i++) {
+    ctx.fillRect(px + 25 + i * 7, py - 8, 2, 8);
+  }
+
+  // HP bar
+  const barW = 120;
+  const barX = px - 10;
+  const barY = py - 28;
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(barX - 2, barY - 2, barW + 4, 14);
+  ctx.fillStyle = "#333";
+  ctx.fillRect(barX, barY, barW, 10);
+  const hpFrac = hp / maxHp;
+  ctx.fillStyle = hpFrac > 0.6 ? "#ff3333" : hpFrac > 0.3 ? "#ff8800" : "#ffff00";
+  ctx.fillRect(barX, barY, Math.floor(barW * hpFrac), 10);
+  ctx.strokeStyle = "#ff0000";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(barX, barY, barW, 10);
+  ctx.font = "6px 'Press Start 2P'";
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.fillText("FREESIA", barX + barW / 2, barY - 4);
+
+  // Glow aura
+  ctx.fillStyle = `rgba(180,0,0,${0.08 + 0.05 * Math.sin(tick * 0.1)})`;
+  ctx.fillRect(px - 20, py - 20, 130, 160);
+}
+
+function drawBomb(ctx: CanvasRenderingContext2D, bomb: Bomb, tick: number) {
+  const px = Math.floor(bomb.x);
+  const py = Math.floor(bomb.y);
+  const glow = bomb.reflected ? "#00ffff" : "#ff6600";
+  const core = bomb.reflected ? "#ffffff" : "#ff2200";
+
+  // Glow
+  ctx.fillStyle = bomb.reflected
+    ? `rgba(0,255,255,${0.15 + 0.1 * Math.sin(tick * 0.3)})`
+    : `rgba(255,100,0,${0.2 + 0.1 * Math.sin(tick * 0.2)})`;
+  ctx.fillRect(px - 6, py - 6, 28, 28);
+
+  // Body
+  ctx.fillStyle = glow;
+  ctx.fillRect(px + 2, py, 12, 16);
+  ctx.fillRect(px, py + 2, 16, 12);
+
+  // Core
+  ctx.fillStyle = core;
+  ctx.fillRect(px + 4, py + 2, 8, 12);
+  ctx.fillRect(px + 2, py + 4, 12, 8);
+
+  // Fuse
+  ctx.fillStyle = "#888";
+  ctx.fillRect(px + 6, py - 5, 4, 6);
+  ctx.fillStyle = "#ffff00";
+  ctx.fillRect(px + 7, py - 8, 2, 4);
+
+  // Skull on bomb
+  ctx.fillStyle = "#000";
+  ctx.fillRect(px + 5, py + 5, 2, 2);
+  ctx.fillRect(px + 9, py + 5, 2, 2);
+  ctx.fillRect(px + 4, py + 9, 8, 2);
+
+  // Spin indicator if reflected
+  if (bomb.reflected) {
+    ctx.fillStyle = "#00ffff";
+    ctx.fillRect(px - 3, py + 7, 3, 3);
+    ctx.fillRect(px + 16, py + 7, 3, 3);
+  }
+}
+
 function drawGround(ctx: CanvasRenderingContext2D, offset: number) {
   // Ground base
   drawPixelRect(ctx, 0, GROUND_Y + LULU_H, CANVAS_W, CANVAS_H - GROUND_Y - LULU_H, PALETTE.ground);
@@ -499,6 +669,9 @@ export default function LuluGame() {
     vixRunning: false,
     typewriter: null as Typewriter | null,
     typewriterSpawnTimer: 0,
+    freesia: null as Freesia | null,
+    bossActive: false,
+    bossVictoryTimer: 0,
     luluX: 80,
     luluMoveTarget: 80,
     soundEnabled: true,
@@ -606,6 +779,9 @@ export default function LuluGame() {
       gs.vixX = CANVAS_W + 100;
       gs.typewriter = null;
       gs.typewriterSpawnTimer = 0;
+      gs.freesia = null;
+      gs.bossActive = false;
+      gs.bossVictoryTimer = 0;
       spawnPlatforms();
       setScreen("playing");
     },
@@ -726,6 +902,24 @@ export default function LuluGame() {
             gs.gameSpeed = DIFFICULTY_CONFIG[gs.difficulty].speed + (gs.level - 1) * 0.8;
             gs.flashTimer = 60;
             spawnParticles(CANVAS_W / 2, CANVAS_H / 2, PALETTE.uiAccent, 20);
+            // Spawn Freesia boss at levels 3, 6, 9, 12...
+            const nextBoss = gs.freesia ? gs.freesia.nextBossLevel : 3;
+            if (gs.level === nextBoss && !gs.bossActive) {
+              gs.bossActive = true;
+              gs.obstacles = [];
+              gs.freesia = {
+                x: CANVAS_W + 20,
+                hp: 3,
+                maxHp: 3,
+                state: "entering",
+                frame: 0,
+                bobOffset: 0,
+                bombTimer: 180,
+                hurtTimer: 0,
+                bombs: [],
+                nextBossLevel: nextBoss + 3,
+              };
+            }
           }
 
           // Lulu physics
@@ -769,13 +963,15 @@ export default function LuluGame() {
             }
           });
 
-          // Spawn obstacles
-          gs.obstacleTimer++;
-          const cfg = DIFFICULTY_CONFIG[gs.difficulty];
-          const interval = Math.max(40, cfg.obstacleInterval - gs.level * 5);
-          if (gs.obstacleTimer >= interval) {
-            gs.obstacleTimer = 0;
-            spawnObstacle();
+          // Spawn obstacles (not during boss fight)
+          if (!gs.bossActive) {
+            gs.obstacleTimer++;
+            const cfg = DIFFICULTY_CONFIG[gs.difficulty];
+            const interval = Math.max(40, cfg.obstacleInterval - gs.level * 5);
+            if (gs.obstacleTimer >= interval) {
+              gs.obstacleTimer = 0;
+              spawnObstacle();
+            }
           }
 
           // Move obstacles
@@ -840,6 +1036,127 @@ export default function LuluGame() {
             }
           }
 
+          // ===== FREESIA BOSS LOGIC =====
+          if (gs.freesia && gs.bossActive) {
+            const f = gs.freesia;
+            f.frame++;
+            f.bobOffset = Math.sin(f.frame * 0.06) * 6;
+            if (f.hurtTimer > 0) f.hurtTimer--;
+
+            // Entering: slide from right
+            if (f.state === "entering") {
+              f.x -= 3;
+              if (f.x <= CANVAS_W - 160) {
+                f.state = "fighting";
+                f.bombTimer = 120;
+              }
+            }
+
+            // Fighting: fire bombs periodically
+            if (f.state === "fighting") {
+              f.bombTimer--;
+              if (f.bombTimer <= 0) {
+                f.bombTimer = Math.max(60, 150 - gs.level * 8);
+                // Arc bomb toward Lulu
+                const bx = f.x + 40;
+                const by = GROUND_Y - 50 + f.bobOffset;
+                const dx = gs.luluX - bx;
+                const dy = gs.luluY - by;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                const speed = 4 + gs.level * 0.3;
+                f.bombs.push({
+                  x: bx,
+                  y: by,
+                  vx: (dx / dist) * speed - 2,
+                  vy: -8,
+                  reflected: false,
+                  onGround: false,
+                });
+              }
+            }
+
+            // Fleeing
+            if (f.state === "fleeing") {
+              f.x += 5;
+              f.bombs = [];
+              if (f.x > CANVAS_W + 200) {
+                f.state = "gone";
+                gs.bossActive = false;
+                gs.bossVictoryTimer = 120;
+                gs.score += 500;
+                spawnParticles(CANVAS_W / 2, CANVAS_H / 2, "#ff6600", 30);
+                spawnParticles(CANVAS_W / 2, CANVAS_H / 3, "#ffff00", 20);
+              }
+            }
+
+            // Update bombs
+            f.bombs.forEach((b) => {
+              b.x += b.vx;
+              b.vy += GRAVITY * 0.7;
+              b.y += b.vy;
+
+              // Bounce off ground if not reflected
+              if (!b.reflected && b.y + 16 >= GROUND_Y + LULU_H) {
+                b.y = GROUND_Y + LULU_H - 16;
+                b.vy *= -0.5;
+                b.onGround = true;
+              }
+
+              // Reflected bombs damage Freesia
+              if (b.reflected && f.state === "fighting") {
+                if (
+                  b.x + 16 > f.x + 10 &&
+                  b.x < f.x + 110 &&
+                  b.y + 16 > GROUND_Y - 160 + f.bobOffset &&
+                  b.y < GROUND_Y + 20 + f.bobOffset
+                ) {
+                  b.vx = 99; // mark for removal
+                  f.hp--;
+                  f.hurtTimer = 40;
+                  spawnParticles(f.x + 50, GROUND_Y - 60, "#ff0000", 14);
+                  if (f.hp <= 0) {
+                    f.state = "fleeing";
+                    spawnParticles(f.x + 50, GROUND_Y - 80, "#ff6600", 25);
+                  }
+                }
+              }
+
+              // Unreflected bomb hits Lulu → game over
+              if (
+                !b.reflected &&
+                b.x + 12 > gs.luluX + 4 &&
+                b.x < gs.luluX + LULU_W - 4 &&
+                b.y + 12 > gs.luluY + 4 &&
+                b.y < gs.luluY + LULU_H - 4
+              ) {
+                spawnParticles(gs.luluX + LULU_W / 2, gs.luluY + LULU_H / 2, PALETTE.luluBody, 16);
+                endGame();
+              }
+
+              // Lulu JUMPS on bomb → reflect it!
+              if (
+                !b.reflected &&
+                gs.luluVY > 0 &&
+                gs.luluY + LULU_H >= b.y + 2 &&
+                gs.luluY + LULU_H <= b.y + 12 &&
+                gs.luluX + LULU_W - 4 > b.x &&
+                gs.luluX + 4 < b.x + 16
+              ) {
+                b.reflected = true;
+                b.vx = -(Math.abs(b.vx) + 3);
+                b.vy = -10;
+                gs.luluVY = JUMP_FORCE * 0.6;
+                gs.luluOnGround = false;
+                spawnParticles(b.x + 8, b.y + 8, "#00ffff", 10);
+              }
+            });
+
+            // Remove off-screen or spent bombs
+            f.bombs = f.bombs.filter(
+              (b) => b.x > -40 && b.x < CANVAS_W + 40 && b.vx < 90
+            );
+          }
+
           // Particles
           gs.particles.forEach((p) => {
             p.x += p.vx;
@@ -873,6 +1190,49 @@ export default function LuluGame() {
         // Draw typewriter
         if (gs.typewriter && !gs.typewriter.collected) {
           drawTypewriter(ctx, gs.typewriter.x, gs.typewriter.y);
+        }
+
+        // Draw Freesia boss & bombs
+        if (gs.freesia && gs.freesia.state !== "gone") {
+          const f = gs.freesia;
+          f.bombs.forEach((b) => drawBomb(ctx, b, gs.tick));
+          drawFreesia(ctx, f.x, f.bobOffset, f.hurtTimer, f.hp, f.maxHp, gs.tick);
+        }
+
+        // Boss victory banner
+        if (gs.bossVictoryTimer > 0) {
+          gs.bossVictoryTimer--;
+          ctx.fillStyle = `rgba(255,100,0,${(gs.bossVictoryTimer / 120) * 0.4})`;
+          ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+          ctx.font = "18px 'Press Start 2P'";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#000";
+          ctx.fillText("FREESIA FLED!", CANVAS_W / 2 + 2, CANVAS_H / 2 + 2);
+          ctx.fillStyle = "#ff6600";
+          ctx.fillText("FREESIA FLED!", CANVAS_W / 2, CANVAS_H / 2);
+          ctx.font = "10px 'Press Start 2P'";
+          ctx.fillStyle = "#ffd700";
+          ctx.fillText("+500 POINTS!", CANVAS_W / 2, CANVAS_H / 2 + 24);
+        }
+
+        // Boss warning banner
+        if (gs.freesia && gs.freesia.state === "entering") {
+          const alpha = 0.7 + 0.3 * Math.sin(gs.tick * 0.2);
+          ctx.fillStyle = `rgba(180,0,0,${alpha * 0.5})`;
+          ctx.fillRect(0, 0, CANVAS_W, 50);
+          ctx.font = "14px 'Press Start 2P'";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#000";
+          ctx.fillText("⚠ FREESIA APPROACHES! ⚠", CANVAS_W / 2 + 2, 32);
+          ctx.fillStyle = "#ff3333";
+          ctx.fillText("⚠ FREESIA APPROACHES! ⚠", CANVAS_W / 2, 30);
+        }
+
+        // Boss hint
+        if (gs.freesia && gs.freesia.state === "fighting" && gs.freesia.frame < 200) {
+          ctx.fillStyle = "rgba(0,0,0,0.6)";
+          ctx.fillRect(10, CANVAS_H - 46, 310, 28);
+          pixelText(ctx, "JUMP ON BOMBS TO REFLECT!", 14, CANVAS_H - 26, 7, "#00ffff");
         }
 
         // Draw Vix
