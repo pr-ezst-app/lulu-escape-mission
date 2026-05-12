@@ -11,6 +11,12 @@ interface Obstacle {
   type: "cactus" | "spike" | "barrel";
 }
 
+interface Typewriter {
+  x: number;
+  y: number;
+  collected: boolean;
+}
+
 interface Platform {
   x: number;
   y: number;
@@ -70,8 +76,9 @@ const PALETTE = {
   ground: "#2d1b00",
   groundTop: "#4a2800",
   grass: "#1a7a1a",
-  luluBody: "#2ecc40",
-  luluDark: "#1a8a1a",
+  luluBody: "#8B4513",
+  luluDark: "#5c2c0a",
+  luluFur: "#a0522d",
   luluEye: "#ffffff",
   luluPupil: "#000000",
   vixBody: "#2ecc40",
@@ -115,48 +122,77 @@ function drawLulu(
 ) {
   const px = Math.floor(x);
   const py = Math.floor(y);
-  const legOff = jumping ? 0 : frame % 2 === 0 ? 2 : -2;
+  const legOff = jumping ? 0 : frame % 2 === 0 ? 3 : -3;
 
   // Shadow
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.fillRect(px - 4, py + LULU_H - 2, LULU_W + 8, 4);
 
-  // Body
-  drawPixelRect(ctx, px + 4, py + 10, 24, 22, PALETTE.luluBody);
-  // Body shading
-  drawPixelRect(ctx, px + 4, py + 10, 4, 22, PALETTE.luluDark);
-  drawPixelRect(ctx, px + 24, py + 10, 4, 22, PALETTE.luluDark);
+  // === ANTLERS ===
+  ctx.fillStyle = "#6b3a10";
+  // Left antler stem
+  ctx.fillRect(px + 7, py - 14, 3, 10);
+  // Left antler branches
+  ctx.fillRect(px + 2, py - 18, 3, 8);
+  ctx.fillRect(px + 7, py - 20, 3, 6);
+  ctx.fillRect(px + 2, py - 18, 8, 3);
+  // Right antler stem
+  ctx.fillRect(px + 22, py - 14, 3, 10);
+  // Right antler branches
+  ctx.fillRect(px + 22, py - 18, 8, 3);
+  ctx.fillRect(px + 22, py - 20, 3, 6);
+  ctx.fillRect(px + 27, py - 18, 3, 8);
 
-  // Head
-  drawPixelRect(ctx, px + 6, py, 20, 14, PALETTE.luluBody);
-  drawPixelRect(ctx, px + 6, py, 4, 14, PALETTE.luluDark);
+  // === BODY ===
+  drawPixelRect(ctx, px + 4, py + 12, 24, 20, PALETTE.luluBody);
+  drawPixelRect(ctx, px + 4, py + 12, 4, 20, PALETTE.luluDark);
+  drawPixelRect(ctx, px + 24, py + 12, 4, 20, PALETTE.luluDark);
+  // Belly patch (lighter fur)
+  drawPixelRect(ctx, px + 10, py + 16, 12, 12, PALETTE.luluFur);
+
+  // === HEAD ===
+  drawPixelRect(ctx, px + 5, py - 2, 22, 16, PALETTE.luluBody);
+  drawPixelRect(ctx, px + 5, py - 2, 4, 16, PALETTE.luluDark);
+  // Snout / muzzle
+  drawPixelRect(ctx, px + 10, py + 8, 12, 8, PALETTE.luluFur);
 
   // Eyes
-  drawPixelRect(ctx, px + 18, py + 4, 5, 5, PALETTE.luluEye);
-  drawPixelRect(ctx, px + 20, py + 5, 3, 3, PALETTE.luluPupil);
-  drawPixelRect(ctx, px + 10, py + 4, 5, 5, PALETTE.luluEye);
-  drawPixelRect(ctx, px + 11, py + 5, 3, 3, PALETTE.luluPupil);
+  drawPixelRect(ctx, px + 19, py + 2, 5, 5, PALETTE.luluEye);
+  drawPixelRect(ctx, px + 20, py + 3, 3, 3, PALETTE.luluPupil);
+  drawPixelRect(ctx, px + 10, py + 2, 5, 5, PALETTE.luluEye);
+  drawPixelRect(ctx, px + 11, py + 3, 3, 3, PALETTE.luluPupil);
+  // Eye shine
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(px + 21, py + 3, 1, 1);
+  ctx.fillRect(px + 12, py + 3, 1, 1);
 
-  // Mouth smile
-  drawPixelRect(ctx, px + 12, py + 10, 2, 2, PALETTE.luluDark);
-  drawPixelRect(ctx, px + 18, py + 10, 2, 2, PALETTE.luluDark);
-  drawPixelRect(ctx, px + 14, py + 12, 4, 2, PALETTE.luluDark);
+  // Red nose!
+  ctx.fillStyle = "#ff2222";
+  ctx.fillRect(px + 14, py + 10, 6, 5);
+  ctx.fillStyle = "#ff6666";
+  ctx.fillRect(px + 15, py + 10, 2, 2);
 
-  // Shirt stripe
-  drawPixelRect(ctx, px + 4, py + 18, 24, 4, PALETTE.luluDark);
+  // Ears
+  drawPixelRect(ctx, px + 3, py - 2, 5, 7, PALETTE.luluBody);
+  drawPixelRect(ctx, px + 24, py - 2, 5, 7, PALETTE.luluBody);
+  ctx.fillStyle = "#cc7744";
+  ctx.fillRect(px + 4, py - 1, 3, 5);
+  ctx.fillRect(px + 25, py - 1, 3, 5);
 
-  // Arms
-  const armSwing = jumping ? -4 : frame % 2 === 0 ? 3 : -3;
-  drawPixelRect(ctx, px, py + 12 + armSwing, 6, 12, PALETTE.luluBody);
-  drawPixelRect(ctx, px + 26, py + 12 - armSwing, 6, 12, PALETTE.luluBody);
+  // === LEGS ===
+  const legColor = PALETTE.luluDark;
+  drawPixelRect(ctx, px + 5, py + 30, 9, 10 + legOff, legColor);
+  drawPixelRect(ctx, px + 18, py + 30, 9, 10 - legOff, legColor);
+  // Hooves
+  ctx.fillStyle = "#2a1a00";
+  ctx.fillRect(px + 4, py + 36 + legOff, 12, 5);
+  ctx.fillRect(px + 17, py + 36 - legOff, 12, 5);
 
-  // Legs
-  drawPixelRect(ctx, px + 6, py + 30, 10, 10 + legOff, PALETTE.luluDark);
-  drawPixelRect(ctx, px + 16, py + 30, 10, 10 - legOff, PALETTE.luluDark);
-
-  // Shoes
-  drawPixelRect(ctx, px + 4, py + 36 + legOff, 14, 6, "#333333");
-  drawPixelRect(ctx, px + 14, py + 36 - legOff, 14, 6, "#333333");
+  // === TAIL ===
+  ctx.fillStyle = PALETTE.luluFur;
+  ctx.fillRect(px + 26, py + 18, 8, 8);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(px + 27, py + 19, 5, 5);
 }
 
 function drawPrincessVix(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -286,6 +322,40 @@ function drawObstacle(
     ctx.fillRect(x + 2, y + 8, 4, height - 16);
     ctx.fillRect(x + width - 6, y + 8, 4, height - 16);
   }
+}
+
+function drawTypewriter(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  const px = Math.floor(x);
+  const py = Math.floor(y);
+  // Body
+  ctx.fillStyle = "#222222";
+  ctx.fillRect(px, py + 10, 44, 28);
+  ctx.fillStyle = "#444444";
+  ctx.fillRect(px + 2, py + 10, 40, 4);
+  // Paper roll
+  ctx.fillStyle = "#f0f0e0";
+  ctx.fillRect(px + 8, py, 28, 14);
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(px + 12, py + 3, 20, 2);
+  ctx.fillRect(px + 12, py + 7, 14, 2);
+  // Keys grid
+  ctx.fillStyle = "#555555";
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 5; col++) {
+      ctx.fillRect(px + 4 + col * 8, py + 18 + row * 9, 6, 6);
+      ctx.fillStyle = "#888888";
+      ctx.fillRect(px + 5 + col * 8, py + 19 + row * 9, 3, 2);
+      ctx.fillStyle = "#555555";
+    }
+  }
+  // Glow
+  ctx.fillStyle = "rgba(255,255,100,0.15)";
+  ctx.fillRect(px - 4, py - 4, 52, 48);
+  // "?" sparkle above
+  ctx.font = "bold 10px 'Press Start 2P'";
+  ctx.fillStyle = "#ffe66d";
+  ctx.textAlign = "center";
+  ctx.fillText("?", px + 22, py - 4);
 }
 
 function drawGround(ctx: CanvasRenderingContext2D, offset: number) {
@@ -426,6 +496,9 @@ export default function LuluGame() {
     flashTimer: 0,
     vixX: CANVAS_W + 100,
     vixIntro: false,
+    vixRunning: false,
+    typewriter: null as Typewriter | null,
+    typewriterSpawnTimer: 0,
     luluX: 80,
     luluMoveTarget: 80,
     soundEnabled: true,
@@ -529,7 +602,10 @@ export default function LuluGame() {
       gs.obstacleTimer = 0;
       gs.flashTimer = 0;
       gs.vixIntro = true;
+      gs.vixRunning = false;
       gs.vixX = CANVAS_W + 100;
+      gs.typewriter = null;
+      gs.typewriterSpawnTimer = 0;
       spawnPlatforms();
       setScreen("playing");
     },
@@ -723,16 +799,44 @@ export default function LuluGame() {
             }
           }
 
-          // Vix intro
+          // Vix intro / running away
           if (gs.vixIntro) {
             if (gs.vixX > CANVAS_W - 120) {
               gs.vixX -= 3;
             } else {
               setTimeout(() => {
                 gs.vixIntro = false;
-                gs.vixX = CANVAS_W + 300;
+                gs.vixX = CANVAS_W - 120;
               }, 2000);
               gs.vixIntro = false;
+            }
+          }
+          if (gs.vixRunning) {
+            gs.vixX += gs.gameSpeed * 2.5;
+          }
+
+          // Typewriter spawn: every ~600 score points, once on screen at a time
+          gs.typewriterSpawnTimer++;
+          if (!gs.typewriter && gs.typewriterSpawnTimer > 300) {
+            gs.typewriterSpawnTimer = 0;
+            gs.typewriter = { x: CANVAS_W + 20, y: GROUND_Y - 4, collected: false };
+          }
+          if (gs.typewriter && !gs.typewriter.collected) {
+            gs.typewriter.x -= gs.gameSpeed * 0.7;
+            // Typewriter off-screen
+            if (gs.typewriter.x + 50 < 0) gs.typewriter = null;
+            // Lulu picks up typewriter
+            if (
+              gs.typewriter &&
+              gs.luluX + LULU_W > gs.typewriter.x + 4 &&
+              gs.luluX < gs.typewriter.x + 44 &&
+              gs.luluY + LULU_H > gs.typewriter.y &&
+              gs.luluY < gs.typewriter.y + 38
+            ) {
+              gs.typewriter.collected = true;
+              gs.vixRunning = true;
+              gs.score += 200;
+              spawnParticles(gs.typewriter.x + 22, gs.typewriter.y + 20, "#ffe66d", 18);
             }
           }
 
@@ -766,21 +870,37 @@ export default function LuluGame() {
         // Draw Lulu
         drawLulu(ctx, gs.luluX, gs.luluY, gs.luluFrame, gs.luluJumping);
 
-        // Draw Vix intro
-        if (gs.vixX < CANVAS_W + 50) {
+        // Draw typewriter
+        if (gs.typewriter && !gs.typewriter.collected) {
+          drawTypewriter(ctx, gs.typewriter.x, gs.typewriter.y);
+        }
+
+        // Draw Vix
+        if (gs.vixX < CANVAS_W + 80 && gs.vixX > -100) {
           drawPrincessVix(ctx, gs.vixX, GROUND_Y - 30);
-          // Speech bubble
-          if (gs.vixX < CANVAS_W - 100) {
-            ctx.fillStyle = "rgba(0,0,0,0.8)";
-            ctx.fillRect(gs.vixX - 140, GROUND_Y - 80, 130, 36);
-            ctx.strokeStyle = PALETTE.vixCrown;
+          // Speech bubble: intro = "SAVE ME LULU!", running = "NOOO!"
+          const bubbleVisible = gs.vixRunning
+            ? gs.vixX > 60 && gs.vixX < CANVAS_W + 20
+            : gs.vixX < CANVAS_W - 100;
+          if (bubbleVisible) {
+            const bx = gs.vixRunning ? gs.vixX - 10 : gs.vixX - 140;
+            const by = GROUND_Y - 88;
+            ctx.fillStyle = "rgba(0,0,0,0.85)";
+            ctx.fillRect(bx, by, 130, 36);
+            ctx.strokeStyle = gs.vixRunning ? "#ff4444" : PALETTE.vixCrown;
             ctx.lineWidth = 2;
-            ctx.strokeRect(gs.vixX - 140, GROUND_Y - 80, 130, 36);
+            ctx.strokeRect(bx, by, 130, 36);
             ctx.font = "8px 'Press Start 2P'";
-            ctx.fillStyle = "#ff69b4";
             ctx.textAlign = "center";
-            ctx.fillText("SAVE ME", gs.vixX - 75, GROUND_Y - 60);
-            ctx.fillText("LULU!", gs.vixX - 75, GROUND_Y - 48);
+            if (gs.vixRunning) {
+              ctx.fillStyle = "#ff4444";
+              ctx.fillText("NOOO NOT", bx + 65, by + 16);
+              ctx.fillText("THE TYPE-", bx + 65, by + 28);
+            } else {
+              ctx.fillStyle = "#ff69b4";
+              ctx.fillText("SAVE ME", bx + 65, by + 16);
+              ctx.fillText("LULU!", bx + 65, by + 28);
+            }
           }
         }
 
@@ -840,7 +960,7 @@ export default function LuluGame() {
           p.life -= 0.025;
         });
         gs.particles = gs.particles.filter((p) => p.life > 0);
-        // Idle Lulu on menu
+        // Idle Lulu on menu (brown reindeer)
         drawLulu(ctx, 80, GROUND_Y, Math.floor(gs.tick / 12), false);
         drawPrincessVix(ctx, CANVAS_W - 140, GROUND_Y - 30);
       }
@@ -968,7 +1088,7 @@ export default function LuluGame() {
                   textShadow: "2px 2px 0 #000",
                 }}
               >
-                THE GREEN HERO
+                REINDEER HERO
               </div>
             </div>
 
